@@ -146,7 +146,7 @@ scratch:
 
 1. `helm install` ArgoCD with `values/argocd.yaml`. ArgoCD has to exist before
    it can manage anything. The chart version is read from `apps/argocd.yaml`
-   with `yq`, so the install matches git and ArgoCD doesn't upgrade or
+   with `awk`, so the install matches git and ArgoCD doesn't upgrade or
    downgrade itself right after bootstrap.
 2. `kubectl apply -f apps/root.yaml`.
 3. From there, root syncs `apps/`: it adopts its own manifest, and

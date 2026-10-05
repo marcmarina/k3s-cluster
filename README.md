@@ -9,13 +9,14 @@ values/               Helm values referenced by the Applications
 
 ## Bootstrap a fresh cluster
 
-Needs `helm`, `kubectl` and [`yq`](https://github.com/mikefarah/yq). The
-chart version is read from `apps/argocd.yaml` so it can't drift from git.
+Needs `helm` and `kubectl`. The chart version is read from `apps/argocd.yaml`
+(the first `targetRevision:` in the file, so keep the chart source first) so
+it can't drift from git.
 
 ```sh
 helm repo add argo https://argoproj.github.io/argo-helm
 helm install argocd argo/argo-cd -n argocd --create-namespace \
-  --version "$(yq '.spec.sources[0].targetRevision' apps/argocd.yaml)" \
+  --version "$(awk '/targetRevision:/ {print $2; exit}' apps/argocd.yaml)" \
   -f values/argocd.yaml
 kubectl apply -f apps/root.yaml
 ```
