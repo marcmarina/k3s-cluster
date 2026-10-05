@@ -1,0 +1,27 @@
+# Express app from the turbo-playground monorepo. The chart and its image tag
+# (values-image.yaml) live in that repo; this only tells ArgoCD to deploy it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turbo-express
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/marcmarina/turbo-playground.git
+    targetRevision: master
+    path: apps/express/helm
+    helm:
+      releaseName: turbo-express
+      valueFiles:
+        - values.yaml
+        - values-image.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
