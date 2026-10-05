@@ -4,7 +4,6 @@ GitOps config for the `k3s-server` cluster, managed by ArgoCD.
 
 ```
 apps/                 One ArgoCD Application per component (root included)
-archived/             Applications no longer deployed
 values/               Helm values referenced by the Applications
 ```
 

@@ -6,9 +6,8 @@ k3s-cluster/
 │   ├── root.yaml         ← applied by hand once, then syncs itself
 │   ├── argocd.yaml       ← synced by root
 │   ├── fastapi-playground.yaml
+│   ├── go-playground.yaml
 │   └── turbo-express.yaml
-├── archived/             ← not synced; moving a file here removes the app
-│   └── go-playground.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
 ```
@@ -31,9 +30,9 @@ sync other Application manifests.
 - **`automated.selfHeal: true`**: if someone edits an Application by hand
   (with `kubectl edit` or in the ArgoCD UI), ArgoCD reverts it to match git.
   Root included: to change any sync policy, edit the file and push.
-- **`prune: true`**: deleting a file from `apps/` (or moving it to
-  `archived/`) deletes the Application from the cluster. Apps with the
-  `resources-finalizer` then take their workloads with them. Argo CD refuses
+- **`prune: true`**: deleting a file from `apps/` (or moving it out, e.g.
+  to an `archived/` folder) deletes the Application from the cluster. Apps
+  with the `resources-finalizer` then take their workloads with them. Argo CD refuses
   to prune everything at once, so an empty `apps/` won't wipe the cluster.
 - **No `resources-finalizer`**: if root itself is deleted or pruned, the
   child Applications and workloads keep running; nothing syncs until
@@ -102,7 +101,7 @@ image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
   `.Values.namespace` (`default`), so the chart decides where resources go.
   `destination.namespace` only applies to resources that don't set one.
 
-## `archived/go-playground.yaml`: the Go API (archived)
+## `apps/go-playground.yaml`: the Go API
 
 Same pattern as `fastapi-playground.yaml`: the chart (`helm/` on `main`) and
 the image tag (`values-image.yaml`) live in the `go-playground` repo, with
@@ -111,9 +110,7 @@ sets `namespace:` from `.Values.namespace` (`default`). Served at
 `go.marc-lab.dev` through Traefik's `web` entrypoint.
 
 Unlike the other apps, it was added through this repo from the start
-(2026-10-06) rather than created by hand and adopted. Archived the same day:
-once root had `prune: true`, root deleted the Application and the finalizer
-removed its workloads. Moving it back to `apps/` redeploys it.
+(2026-10-06) rather than created by hand and adopted.
 
 ## `values/argocd.yaml`: ArgoCD's configuration
 
