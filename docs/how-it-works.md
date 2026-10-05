@@ -133,6 +133,9 @@ scratch:
 
 ## Not in this repo yet
 
-- **`prometheus`** (`kube-prometheus-stack` in `monitoring`): still a Helm
-  release managed by hand.
+- **Monitoring**: `kube-prometheus-stack` was removed on 2026-10-05, CRDs
+  and data included, to be reinstalled from scratch. Until the CRDs are back,
+  the `ServiceMonitor` in each app's chart can't be applied, so
+  `fastapi-playground` and `turbo-express` show sync errors (their workloads
+  still run).
 - **Traefik**: installed and managed by k3s itself.
