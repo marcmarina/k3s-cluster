@@ -3,7 +3,9 @@
 ```
 k3s-cluster/
 ├── bootstrap/root.yaml   ← applied by hand once
-├── apps/argocd.yaml      ← synced by root
+├── apps/
+│   ├── argocd.yaml       ← synced by root
+│   └── turbo-express.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
 ```
@@ -57,6 +59,26 @@ This Application installs the ArgoCD Helm chart, which is what runs ArgoCD.
 **Upgrading ArgoCD:** bump the chart's `targetRevision`, commit and push.
 ArgoCD picks up the change and upgrades itself.
 
+## `apps/turbo-express.yaml`: the Express app
+
+Deploys the Express app from the `turbo-playground` monorepo. Unlike
+`argocd.yaml`, the chart and its values live in the app's own repo
+(`apps/express/helm` on `master`), not here:
+
+- **`values.yaml` + `values-image.yaml`**: both come from `turbo-playground`.
+  The image tag lives in `values-image.yaml`, so deploying a new version means
+  changing that file in the app repo, not this one.
+- **`releaseName: turbo-express`**: keeps resource names the same as when the
+  app was installed with Helm.
+- **`prune: true`**: unlike the platform apps, resources removed from the
+  chart are deleted from the cluster.
+- **`resources-finalizer`**: deleting this Application also deletes the app's
+  Deployment, Service, etc. That's the normal behaviour for an app (the
+  opposite of `argocd.yaml`, where it would delete ArgoCD itself).
+
+The Application was created by hand first and moved here on 2026-10-05; the
+file matches what was live exactly, so root adopted it without changing it.
+
 ## `values/argocd.yaml`: ArgoCD's configuration
 
 The Helm values originally passed to `helm install`, copied unchanged (the
@@ -98,10 +120,9 @@ scratch:
 
 ## Not in this repo yet
 
-- **`fastapi-playground` and `turbo-express`**: their Applications were
-  created by hand and point to the `fastapi-playground` and
-  `turbo-playground` repos. Moving them into `apps/` would let the README
-  steps rebuild the whole cluster.
+- **`fastapi-playground`**: its Application was created by hand and points
+  to the `fastapi-playground` repo. Moving it into `apps/` would let the
+  README steps rebuild the whole cluster.
 - **`prometheus`** (`kube-prometheus-stack` in `monitoring`): still a Helm
   release managed by hand.
 - **Traefik**: installed and managed by k3s itself.
