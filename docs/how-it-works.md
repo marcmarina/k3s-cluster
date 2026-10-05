@@ -6,6 +6,7 @@ k3s-cluster/
 ├── apps/
 │   ├── argocd.yaml       ← synced by root
 │   ├── fastapi-playground.yaml
+│   ├── go-playground.yaml
 │   └── turbo-express.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
@@ -91,6 +92,17 @@ image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
 - **Namespace**: the chart's templates set `namespace:` from
   `.Values.namespace` (`default`), so the chart decides where resources go.
   `destination.namespace` only applies to resources that don't set one.
+
+## `apps/go-playground.yaml`: the Go API
+
+Same pattern as `fastapi-playground.yaml`: the chart (`helm/` on `main`) and
+the image tag (`values-image.yaml`) live in the `go-playground` repo, with
+`prune: true` and the `resources-finalizer`. No `releaseName`, and the chart
+sets `namespace:` from `.Values.namespace` (`default`). Served at
+`go.marc-lab.dev` through Traefik's `web` entrypoint.
+
+Unlike the other apps, it was added through this repo from the start
+(2026-10-06) rather than created by hand and adopted.
 
 ## `values/argocd.yaml`: ArgoCD's configuration
 
