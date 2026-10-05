@@ -2,17 +2,18 @@
 
 ```
 k3s-cluster/
-├── bootstrap/root.yaml   ← applied by hand once
 ├── apps/
+│   ├── root.yaml         ← applied by hand once, then syncs itself
 │   ├── argocd.yaml       ← synced by root
 │   ├── fastapi-playground.yaml
-│   ├── go-playground.yaml
 │   └── turbo-express.yaml
+├── archived/             ← not synced; moving a file here removes the app
+│   └── go-playground.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
 ```
 
-## `bootstrap/root.yaml`: the entry point
+## `apps/root.yaml`: the entry point
 
 The root of the "app of apps": an ArgoCD Application whose only job is to
 sync other Application manifests.
@@ -20,17 +21,24 @@ sync other Application manifests.
 - **`source.path: apps`**: watches the `apps/` folder of this repo on `main`.
   Every YAML file there gets applied to the cluster. Because those files are
   themselves Applications, each one becomes an app in ArgoCD.
+- **It manages itself**: `root.yaml` lives in `apps/`, so root syncs its own
+  manifest like any other. Something still has to start the chain:
+  `kubectl apply -f apps/root.yaml` is run once on a fresh cluster, and from
+  then on root comes from git too.
 - **`destination.namespace: argocd`**: Application resources have to live in
   the `argocd` namespace. This doesn't control where the apps' own workloads
   go; each Application sets that itself.
 - **`automated.selfHeal: true`**: if someone edits an Application by hand
-  (for example with `kubectl edit`), ArgoCD reverts it to match git.
-- **`prune: false`**: deleting a file from `apps/` does not delete the
-  Application from the cluster; it just shows as out of sync. Deliberately
-  conservative.
-- **Why it's in `bootstrap/` and not `apps/`**: something has to start the
-  chain, and it can't be ArgoCD itself. `kubectl apply -f bootstrap/root.yaml`
-  is run once, and from then on everything else comes from git.
+  (with `kubectl edit` or in the ArgoCD UI), ArgoCD reverts it to match git.
+  Root included: to change any sync policy, edit the file and push.
+- **`prune: true`**: deleting a file from `apps/` (or moving it to
+  `archived/`) deletes the Application from the cluster. Apps with the
+  `resources-finalizer` then take their workloads with them. Argo CD refuses
+  to prune everything at once, so an empty `apps/` won't wipe the cluster.
+- **No `resources-finalizer`**: if root itself is deleted or pruned, the
+  child Applications and workloads keep running; nothing syncs until
+  `apps/root.yaml` is applied again. Same recovery if a bad change to
+  `root.yaml` breaks root: fix the file and `kubectl apply` it.
 
 ## `apps/argocd.yaml`: ArgoCD managing itself
 
@@ -52,8 +60,9 @@ This Application installs the ArgoCD Helm chart, which is what runs ArgoCD.
 - **`ServerSideApply=true`**: needed because the ApplicationSet CRD is too big
   for regular client-side apply. The original Helm install also used
   server-side apply, so behaviour stays the same.
-- **`selfHeal: true`, `prune: false`**: same reasoning as root. Manual changes
-  get reverted; nothing gets deleted automatically.
+- **`selfHeal: true`, `prune: false`**: manual changes get reverted, but
+  resources dropped from the chart are never deleted automatically. Being
+  conservative here because they're ArgoCD's own.
 - **No `resources-finalizer`**: normally that finalizer makes deleting an
   Application also delete everything it deployed. Here that would mean
   deleting the Application deletes ArgoCD itself, so it's left off on purpose.
@@ -72,8 +81,8 @@ Deploys the Express app from the `turbo-playground` monorepo. Unlike
   changing that file in the app repo, not this one.
 - **`releaseName: turbo-express`**: keeps resource names the same as when the
   app was installed with Helm.
-- **`prune: true`**: unlike the platform apps, resources removed from the
-  chart are deleted from the cluster.
+- **`prune: true`**: unlike `argocd.yaml`, resources removed from the chart
+  are deleted from the cluster.
 - **`resources-finalizer`**: deleting this Application also deletes the app's
   Deployment, Service, etc. That's the normal behaviour for an app (the
   opposite of `argocd.yaml`, where it would delete ArgoCD itself).
@@ -93,7 +102,7 @@ image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
   `.Values.namespace` (`default`), so the chart decides where resources go.
   `destination.namespace` only applies to resources that don't set one.
 
-## `apps/go-playground.yaml`: the Go API
+## `archived/go-playground.yaml`: the Go API (archived)
 
 Same pattern as `fastapi-playground.yaml`: the chart (`helm/` on `main`) and
 the image tag (`values-image.yaml`) live in the `go-playground` repo, with
@@ -102,7 +111,9 @@ sets `namespace:` from `.Values.namespace` (`default`). Served at
 `go.marc-lab.dev` through Traefik's `web` entrypoint.
 
 Unlike the other apps, it was added through this repo from the start
-(2026-10-06) rather than created by hand and adopted.
+(2026-10-06) rather than created by hand and adopted. Archived the same day:
+once root had `prune: true`, root deleted the Application and the finalizer
+removed its workloads. Moving it back to `apps/` redeploys it.
 
 ## `values/argocd.yaml`: ArgoCD's configuration
 
@@ -137,11 +148,21 @@ A short description of the layout and the steps to rebuild the cluster from
 scratch:
 
 1. `helm install` ArgoCD with `values/argocd.yaml`. ArgoCD has to exist before
-   it can manage anything.
-2. `kubectl apply -f bootstrap/root.yaml`.
-3. From there, root syncs `apps/argocd.yaml`, and ArgoCD adopts the Helm
-   install it was started from. That's the same takeover that was done on the
-   live cluster when this repo was set up (2026-10-05).
+   it can manage anything. The chart version is read from `apps/argocd.yaml`
+   with `yq`, so the install matches git and ArgoCD doesn't upgrade or
+   downgrade itself right after bootstrap.
+2. `kubectl apply -f apps/root.yaml`.
+3. From there, root syncs `apps/`: it adopts its own manifest, and
+   `apps/argocd.yaml` adopts the Helm install ArgoCD was started from. That's
+   the same takeover that was done on the live cluster when this repo was set
+   up (2026-10-05). The Helm release record stays behind and should be left
+   alone.
+
+It also has the command for joining extra nodes. That happens at the k3s
+level and doesn't change anything in this repo.
+
+Nothing reads the README automatically: root only syncs `apps/`, so it's
+instructions for a person, not config.
 
 ## Not in this repo yet
 

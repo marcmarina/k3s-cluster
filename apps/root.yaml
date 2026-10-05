@@ -1,0 +1,25 @@
+# App of apps: every Application manifest under apps/ is synced from git,
+# including this one, so root manages (and self-heals) itself.
+# Applied by hand only once, when bootstrapping a cluster:
+#   kubectl apply -f apps/root.yaml
+#
+# No resources-finalizer on purpose: if root is deleted (or pruned because
+# this file left apps/), the child Applications and their workloads stay.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/marcmarina/k3s-cluster.git
+    targetRevision: main
+    path: apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
