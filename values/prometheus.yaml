@@ -14,6 +14,11 @@ grafana:
   persistence:
     enabled: true
     size: 10Gi
+  # The chown init container runs as root with only CAP_CHOWN, so it can't
+  # enter the 0700 dirs Grafana creates for its search index and crash-loops.
+  # The data is already owned by 472, and fsGroup covers group ownership.
+  initChownData:
+    enabled: false
 
 prometheus:
   prometheusSpec:
