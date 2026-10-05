@@ -134,8 +134,6 @@ scratch:
 ## Not in this repo yet
 
 - **Monitoring**: `kube-prometheus-stack` was removed on 2026-10-05, CRDs
-  and data included, to be reinstalled from scratch. Until the CRDs are back,
-  the `ServiceMonitor` in each app's chart can't be applied, so
-  `fastapi-playground` and `turbo-express` show sync errors (their workloads
-  still run).
+  and data included, to be reinstalled from scratch. The apps' charts no
+  longer ship a `ServiceMonitor`; add them back once the CRDs return.
 - **Traefik**: installed and managed by k3s itself.
