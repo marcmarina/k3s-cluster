@@ -1,0 +1,27 @@
+# Values for the kube-prometheus-stack chart
+# (https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
+grafana:
+  enabled: true
+  image:
+    tag: 13.0.1-security-01
+  admin:
+    # Not in git (public repo). Created by hand in the monitoring namespace:
+    #   kubectl -n monitoring create secret generic grafana-admin \
+    #     --from-literal=admin-user=admin --from-literal=admin-password=...
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: true
+    size: 10Gi
+
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    scrapeInterval: 15s
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 50Gi
