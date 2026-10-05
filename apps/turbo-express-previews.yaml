@@ -1,0 +1,58 @@
+# Preview environments for turbo-playground PRs. Every open PR labelled
+# "preview" gets its own Application, namespace and hostname
+# (turbo-express-pr-<number>.marc-lab.dev). The image is built by the
+# preview.yml workflow in that repo, tagged with the PR's head SHA.
+#
+# Closing or merging the PR deletes the Application and, through the
+# resources-finalizer, everything it deployed. The namespace is left behind.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: turbo-express-previews
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - pullRequest:
+        github:
+          owner: marcmarina
+          repo: turbo-playground
+          labels:
+            - preview
+        # The repo is public, so no token: the unauthenticated limit is 60
+        # requests/hour, and polling every 5 minutes uses 12.
+        requeueAfterSeconds: 300
+  template:
+    metadata:
+      name: 'turbo-express-pr-{{.number}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/marcmarina/turbo-playground.git
+        # The PR's own commit, so chart changes in the PR are previewed too
+        targetRevision: '{{.head_sha}}'
+        path: apps/express/helm
+        helm:
+          releaseName: turbo-express
+          # values-image.yaml is skipped: the tag comes from the PR instead
+          valueFiles:
+            - values.yaml
+          parameters:
+            - name: namespace
+              value: 'turbo-express-pr-{{.number}}'
+            - name: image.tag
+              value: '{{.head_sha}}'
+            - name: ingress.host
+              value: 'turbo-express-pr-{{.number}}.marc-lab.dev'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'turbo-express-pr-{{.number}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

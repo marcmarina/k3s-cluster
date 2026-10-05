@@ -6,7 +6,8 @@ k3s-cluster/
 ├── apps/
 │   ├── argocd.yaml       ← synced by root
 │   ├── fastapi-playground.yaml
-│   └── turbo-express.yaml
+│   ├── turbo-express.yaml
+│   └── turbo-express-previews.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
 ```
@@ -91,6 +92,28 @@ image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
 - **Namespace**: the chart's templates set `namespace:` from
   `.Values.namespace` (`default`), so the chart decides where resources go.
   `destination.namespace` only applies to resources that don't set one.
+
+## `apps/turbo-express-previews.yaml`: PR previews
+
+An ApplicationSet, not an Application: its Pull Request generator polls
+`turbo-playground` every 5 minutes and creates one Application per open PR
+labelled `preview`.
+
+- **Per-PR names**: Application, namespace and hostname are all
+  `turbo-express-pr-<number>` (`turbo-express-pr-<number>.marc-lab.dev`).
+  The `*.marc-lab.dev` wildcard DNS already covers the hostname.
+- **`targetRevision` and `image.tag` set to the PR's head SHA**: the chart is
+  rendered from the PR's commit, and the image is the one the `preview.yml`
+  workflow in `turbo-playground` builds for that commit. `values-image.yaml`
+  is skipped, since it holds the tag for production.
+- **Images can lag behind**: ArgoCD may deploy a commit before its image is
+  pushed, which shows as `ImagePullBackOff` until the build finishes and the
+  pull is retried.
+- **No GitHub token**: the repo is public, and polling every 5 minutes stays
+  well under the unauthenticated API limit.
+- **Cleanup**: closing or merging the PR removes the Application, and the
+  `resources-finalizer` deletes what it deployed. The namespace made by
+  `CreateNamespace=true` is left behind and has to be deleted by hand.
 
 ## `values/argocd.yaml`: ArgoCD's configuration
 
