@@ -5,6 +5,7 @@ k3s-cluster/
 ├── bootstrap/root.yaml   ← applied by hand once
 ├── apps/
 │   ├── argocd.yaml       ← synced by root
+│   ├── fastapi-playground.yaml
 │   └── turbo-express.yaml
 ├── values/argocd.yaml    ← read by apps/argocd.yaml
 └── README.md
@@ -79,6 +80,18 @@ Deploys the Express app from the `turbo-playground` monorepo. Unlike
 The Application was created by hand first and moved here on 2026-10-05; the
 file matches what was live exactly, so root adopted it without changing it.
 
+## `apps/fastapi-playground.yaml`: the FastAPI app
+
+Same pattern as `turbo-express.yaml`: the chart (`helm/` on `main`) and the
+image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
+`prune: true` and the `resources-finalizer`.
+
+- **No `releaseName`**: it defaults to the Application name,
+  `fastapi-playground`.
+- **Namespace**: the chart's templates set `namespace:` from
+  `.Values.namespace` (`default`), so the chart decides where resources go.
+  `destination.namespace` only applies to resources that don't set one.
+
 ## `values/argocd.yaml`: ArgoCD's configuration
 
 The Helm values originally passed to `helm install`, copied unchanged (the
@@ -120,9 +133,6 @@ scratch:
 
 ## Not in this repo yet
 
-- **`fastapi-playground`**: its Application was created by hand and points
-  to the `fastapi-playground` repo. Moving it into `apps/` would let the
-  README steps rebuild the whole cluster.
 - **`prometheus`** (`kube-prometheus-stack` in `monitoring`): still a Helm
   release managed by hand.
 - **Traefik**: installed and managed by k3s itself.
