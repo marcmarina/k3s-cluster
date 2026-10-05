@@ -1,0 +1,32 @@
+# ArgoCD managing itself. To upgrade, bump targetRevision of the chart.
+#
+# No resources-finalizer on purpose: deleting this Application must never
+# cascade-delete ArgoCD itself.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: 10.9.6
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/values/argocd.yaml
+    - repoURL: https://github.com/marcmarina/k3s-cluster.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      # Required: the ApplicationSet CRD is too large for client-side apply
+      - ServerSideApply=true

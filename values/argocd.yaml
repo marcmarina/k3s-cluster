@@ -1,0 +1,27 @@
+# Values for the argo-cd chart (https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd)
+global:
+  domain: argocd.marc-lab.dev
+
+configs:
+  params:
+    # TLS is terminated by Traefik
+    server.insecure: true
+
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+redis-ha:
+  enabled: false
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web
