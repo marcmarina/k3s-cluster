@@ -1,0 +1,26 @@
+# FastAPI app from the forgetful-api repo. The chart and its image tag
+# (values-image.yaml) live in that repo; this only tells ArgoCD to deploy it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: forgetful-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/marcmarina/forgetful-api
+    targetRevision: main
+    path: helm
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-image.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
