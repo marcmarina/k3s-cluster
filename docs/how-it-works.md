@@ -124,14 +124,15 @@ Its database lives outside the cluster: a Postgres LXC on the local network
 at `192.168.31.143`. Migrations run in an initContainer before the app
 starts.
 
-- **Connection Secret, created by hand**: the app reads `DATABASE_URL` from
-  the `url` key of the `hono-playground-db` Secret, which isn't in git.
-  Create it before the first sync (and again on a fresh cluster), or the pod
-  stays in `CreateContainerConfigError`. URL-encode the password:
+- **Password Secret, created by hand**: host, port, database and user are
+  plain env vars in the chart's `values.yaml`; only `DATABASE_PASSWORD` comes
+  from the `password` key of the `hono-playground-db` Secret, which isn't in
+  git. Create it before the first sync (and again on a fresh cluster), or the
+  pod stays in `CreateContainerConfigError`:
 
   ```sh
   kubectl -n default create secret generic hono-playground-db \
-    --from-literal=url='postgres://<user>:<password>@192.168.31.143:5432/<database>'
+    --from-literal=password='<password>'
   ```
 
 ## `values/argocd.yaml`: ArgoCD's configuration
