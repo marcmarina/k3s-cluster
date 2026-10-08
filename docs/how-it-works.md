@@ -120,26 +120,19 @@ image tag (`values-image.yaml`) live in the `hono-playground` repo, with
 `prune: true` and the `resources-finalizer`. Served at `hono.marc-lab.dev`
 through Traefik's `web` entrypoint.
 
-Unlike the other apps, its chart also runs its own Postgres: a
-`hono-playground-db` StatefulSet with a 1Gi volume from k3s's default
-`local-path` StorageClass. Migrations run in an initContainer before the app
+Its database lives outside the cluster: a Postgres LXC on the local network
+at `192.168.31.143`. Migrations run in an initContainer before the app
 starts.
 
-- **Password Secret, created by hand**: both Postgres and the app read the
-  password from the `hono-playground-db` Secret, which isn't in git. Create
-  it before the first sync (and again on a fresh cluster), or the pods stay
-  in `CreateContainerConfigError`:
+- **Connection Secret, created by hand**: the app reads `DATABASE_URL` from
+  the `url` key of the `hono-playground-db` Secret, which isn't in git.
+  Create it before the first sync (and again on a fresh cluster), or the pod
+  stays in `CreateContainerConfigError`. URL-encode the password:
 
   ```sh
   kubectl -n default create secret generic hono-playground-db \
-    --from-literal=password="$(openssl rand -hex 24)"
+    --from-literal=url='postgres://<user>:<password>@192.168.31.143:5432/<database>'
   ```
-
-  Postgres only reads it when initialising an empty volume, so changing the
-  Secret later doesn't change the database password.
-- **Data outlives the app**: PVCs from a StatefulSet's `volumeClaimTemplates`
-  aren't deleted with it, so removing the Application leaves
-  `data-hono-playground-db-0` behind. Delete it by hand to wipe the data.
 
 ## `values/argocd.yaml`: ArgoCD's configuration
 
