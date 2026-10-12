@@ -20,6 +20,8 @@ helm install argocd argo/argo-cd -n argocd --create-namespace \
   -f values/argocd.yaml
 # Create the GitHub credentials here (see "Private repositories" below),
 # or apps from private repos won't sync
+# Create the grafana-admin Secret too (see docs/how-it-works.md), or Grafana
+# won't start
 kubectl apply -f apps/root.yaml
 ```
 

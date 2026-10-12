@@ -8,8 +8,11 @@ k3s-cluster/
 │   ├── fastapi-playground.yaml
 │   ├── go-playground.yaml
 │   ├── hono-playground.yaml
+│   ├── kube-prometheus-stack.yaml
 │   └── turbo-express.yaml
-├── values/argocd.yaml    ← read by apps/argocd.yaml
+├── values/
+│   ├── argocd.yaml                ← read by apps/argocd.yaml
+│   └── kube-prometheus-stack.yaml ← read by apps/kube-prometheus-stack.yaml
 └── README.md
 ```
 
@@ -135,6 +138,61 @@ starts.
     --from-literal=password='<password>'
   ```
 
+## `apps/kube-prometheus-stack.yaml`: monitoring
+
+Prometheus, Alertmanager, Grafana, node-exporter, kube-state-metrics and the
+Prometheus Operator, in the `monitoring` namespace. Same two-source pattern
+as `argocd.yaml`: the upstream chart, with values from
+`values/kube-prometheus-stack.yaml` in this repo. To upgrade, bump the chart's
+`targetRevision`.
+
+- **`CreateNamespace=true`**: ArgoCD creates `monitoring` on the first sync.
+- **`ServerSideApply=true`**: the operator's CRDs (`Prometheus`,
+  `ServiceMonitor`, ...) are too large for client-side apply, like ArgoCD's
+  ApplicationSet CRD.
+- **`ignoreDifferences` on the webhook `caBundle`**: a Job in the chart
+  generates a self-signed certificate and patches it into the operator's
+  admission webhooks after sync. Without this, the app would always show
+  OutOfSync and self-heal would keep wiping the certificate.
+- **`prune: true` and the `resources-finalizer`**: like the apps, deleting
+  this Application removes everything, including the CRDs (and with them
+  every `ServiceMonitor` in the cluster) and Prometheus' data volume.
+
+It was added on 2026-10-12, reinstalled from scratch after the old
+hand-installed release was removed on 2026-10-05.
+
+## `values/kube-prometheus-stack.yaml`: monitoring configuration
+
+- **Control plane monitors off**: k3s runs the controller-manager,
+  scheduler, kube-proxy and etcd inside the single `k3s` process rather than
+  as separate pods, so the chart's ServiceMonitors for them have nothing to
+  scrape and would fire `TargetDown` forever. Their alert rules are off too.
+  The API server, kubelet and CoreDNS are still scraped.
+- **`*SelectorNilUsesHelmValues: false`**: Prometheus picks up every
+  `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe` and
+  `ScrapeConfig` in the cluster, so the apps' charts can ship monitors without
+  a `release: kube-prometheus-stack` label.
+- **Storage**: Prometheus keeps 15 days of data (capped at 8GB) on a 10Gi
+  `local-path` volume, Alertmanager on 1Gi. `local-path` stores it on the
+  node's disk, so the data is tied to that node.
+- **Grafana**: served at `grafana.marc-lab.dev` through Traefik's `web`
+  entrypoint, like ArgoCD. Dashboards and the Prometheus data source are
+  provisioned by the chart, so Grafana has no volume of its own: dashboards
+  created in the UI are lost on restart (export them to git instead).
+- **Grafana admin Secret, created by hand**: the login comes from the
+  `grafana-admin` Secret, which isn't in git. Create it before the first sync
+  (and again on a fresh cluster), or the Grafana pod won't start:
+
+  ```sh
+  kubectl create namespace monitoring
+  kubectl -n monitoring create secret generic grafana-admin \
+    --from-literal=admin-user=admin \
+    --from-literal=admin-password='<password>'
+  ```
+
+  To change the password, update the Secret and restart Grafana. Grafana
+  stores no data, so it reads the new value on startup.
+
 ## `values/argocd.yaml`: ArgoCD's configuration
 
 The Helm values originally passed to `helm install`, copied unchanged (the
@@ -186,7 +244,7 @@ instructions for a person, not config.
 
 ## Not in this repo yet
 
-- **Monitoring**: `kube-prometheus-stack` was removed on 2026-10-05, CRDs
-  and data included, to be reinstalled from scratch. The apps' charts no
-  longer ship a `ServiceMonitor`; add them back once the CRDs return.
+- **App `ServiceMonitor`s**: the apps' charts stopped shipping them when
+  monitoring was removed on 2026-10-05. Now that the CRDs are back (see
+  `apps/kube-prometheus-stack.yaml`), they can be added again.
 - **Traefik**: installed and managed by k3s itself.
