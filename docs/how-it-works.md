@@ -5,6 +5,7 @@ k3s-cluster/
 ├── apps/
 │   ├── root.yaml         ← applied by hand once, then syncs itself
 │   ├── argocd.yaml       ← synced by root
+│   ├── drizzle-playground.yaml
 │   ├── fastapi-playground.yaml
 │   ├── go-playground.yaml
 │   ├── hono-playground.yaml
@@ -133,6 +134,29 @@ starts.
   ```sh
   kubectl -n default create secret generic hono-playground-db \
     --from-literal=password='<password>'
+  ```
+
+## `apps/drizzle-playground.yaml`: the Express + Drizzle API
+
+Same pattern as `hono-playground.yaml`: the chart (`helm/` on `main`) and the
+image tag (`values-image.yaml`) live in the `drizzle-playground` repo, with
+`prune: true` and the `resources-finalizer`. Served at
+`drizzle-playground.marc-lab.dev` through Traefik's `web` entrypoint.
+
+It uses the same Postgres LXC as hono (`192.168.31.143`, database and user
+`drizzle`), and migrations run in an initContainer before the app starts.
+
+- **Config from dotenvx, key in a Secret created by hand**: unlike hono, the
+  app's config (database password included) lives encrypted in
+  `environments/.env.production` in the app repo and is decrypted at
+  startup. Only the private key comes from the
+  `DOTENV_PRIVATE_KEY_PRODUCTION` key of the `drizzle-playground-dotenvx-keys`
+  Secret, which isn't in git. Create it before the first sync (and again on a
+  fresh cluster), or the pod stays in `CreateContainerConfigError`:
+
+  ```sh
+  kubectl -n default create secret generic drizzle-playground-dotenvx-keys \
+    --from-literal=DOTENV_PRIVATE_KEY_PRODUCTION='<key>'
   ```
 
 ## `values/argocd.yaml`: ArgoCD's configuration
