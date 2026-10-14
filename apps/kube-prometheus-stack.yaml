@@ -1,0 +1,45 @@
+# Prometheus, Alertmanager and the Prometheus Operator (with its CRDs).
+# Grafana is not included. To upgrade, bump targetRevision of the chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.3.0
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/values/kube-prometheus-stack.yaml
+    - repoURL: https://github.com/marcmarina/k3s-cluster.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  # The admission webhook's caBundle is patched in by the chart's cert job
+  # after sync, so git never matches it
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Required: the Prometheus Operator CRDs are too large for client-side apply
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true

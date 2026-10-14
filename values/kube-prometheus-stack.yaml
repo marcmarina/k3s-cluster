@@ -1,0 +1,72 @@
+# Values for the kube-prometheus-stack chart (https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
+
+# k3s runs these inside the k3s process and doesn't expose them like a
+# kubeadm cluster does, so their ServiceMonitors would only fire TargetDown
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
+defaultRules:
+  rules:
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+    etcd: false
+
+prometheus:
+  # Reached through the local Caddy server, which limits it to the LAN.
+  # Prometheus has no auth, so don't expose this host publicly
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+    hosts:
+      - prometheus.marc-lab.dev
+    paths:
+      - /
+    pathType: Prefix
+
+  prometheusSpec:
+    # Pick up monitors and rules from every namespace, not only the ones
+    # labelled with this Helm release
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+
+    retention: 15d
+    retentionSize: 8GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+# Grafana runs separately; this chart only installs Prometheus and friends.
+# forceDeployDashboards still ships the chart's dashboards as ConfigMaps
+# (labelled grafana_dashboard=1) for a Grafana sidecar to pick up.
+grafana:
+  enabled: false
+  forceDeployDashboards: true
