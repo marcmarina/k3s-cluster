@@ -1,4 +1,5 @@
-# App of apps: every Application manifest under apps/ is synced from git,
+# App of apps: every Application manifest under apps/ (one folder per
+# component, each with an application.yaml) is synced from git,
 # including this one, so root manages (and self-heals) itself.
 # Applied by hand only once, when bootstrapping a cluster:
 #   kubectl apply -f apps/root.yaml
@@ -16,6 +17,11 @@ spec:
     repoURL: https://github.com/marcmarina/k3s-cluster.git
     targetRevision: main
     path: apps
+    directory:
+      recurse: true
+      # Helm values sit next to their application.yaml; they're read by the
+      # Application through $values, not applied as manifests
+      exclude: '*/values.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
