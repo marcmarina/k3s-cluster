@@ -29,10 +29,12 @@ sync other Application manifests.
   `apps/` folder of this repo on `main`, subfolders included. Every YAML file
   there gets applied to the cluster. Because those files are themselves
   Applications, each one becomes an app in ArgoCD.
-- **`directory.exclude: '*/values.yaml'`**: each component keeps its Helm
-  values next to its `application.yaml`. Those aren't Kubernetes manifests
-  (applying one fails with "Object 'Kind' is missing"), so root skips them;
-  the Applications read them through `$values` instead.
+- **`directory.include: '{root.yaml,*/application.yaml}'`**: root only
+  applies Applications. Anything else in a component folder is ignored,
+  such as its Helm values (not Kubernetes manifests; the Application reads
+  them through `$values`). `root.yaml` has to be in the pattern too, or root
+  would stop managing (and prune) itself. A plain manifest next to an
+  `application.yaml` would also be ignored, so it needs its own Application.
 - **It manages itself**: `root.yaml` lives in `apps/`, so root syncs its own
   manifest like any other. Something still has to start the chain:
   `kubectl apply -f apps/root.yaml` is run once on a fresh cluster, and from
