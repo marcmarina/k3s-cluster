@@ -29,6 +29,7 @@ prometheus:
       traefik.ingress.kubernetes.io/router.entrypoints: web
     hosts:
       - prometheus.marc-lab.dev
+      - prometheus.home.com
     paths:
       - /
     pathType: Prefix
