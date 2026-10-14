@@ -16,7 +16,7 @@ spec:
       helm:
         releaseName: argocd
         valueFiles:
-          - $values/values/argocd.yaml
+          - $values/apps/argocd/values.yaml
     - repoURL: https://github.com/marcmarina/k3s-cluster.git
       targetRevision: main
       ref: values

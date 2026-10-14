@@ -3,17 +3,20 @@
 ```
 k3s-cluster/
 ├── apps/
-│   ├── root.yaml         ← applied by hand once, then syncs itself
-│   ├── argocd.yaml       ← synced by root
-│   ├── drizzle-playground.yaml
-│   ├── fastapi-playground.yaml
-│   ├── go-playground.yaml
-│   ├── hono-playground.yaml
-│   ├── kube-prometheus-stack.yaml
-│   └── turbo-express.yaml
-├── values/
-│   ├── argocd.yaml                ← read by apps/argocd.yaml
-│   └── kube-prometheus-stack.yaml ← read by apps/kube-prometheus-stack.yaml
+│   ├── root.yaml                  ← applied by hand once, then syncs itself
+│   ├── argocd/
+│   │   ├── application.yaml       ← synced by root
+│   │   └── values.yaml            ← read by argocd/application.yaml
+│   ├── kube-prometheus-stack/
+│   │   ├── application.yaml
+│   │   └── values.yaml
+│   ├── drizzle-playground/application.yaml
+│   ├── fastapi-playground/application.yaml
+│   ├── hono-playground/application.yaml
+│   └── turbo-express/application.yaml
+├── archived/                      ← same layout, not synced (outside apps/)
+│   ├── forgetful-api/application.yaml
+│   └── go-playground/application.yaml
 └── README.md
 ```
 
@@ -22,9 +25,14 @@ k3s-cluster/
 The root of the "app of apps": an ArgoCD Application whose only job is to
 sync other Application manifests.
 
-- **`source.path: apps`**: watches the `apps/` folder of this repo on `main`.
-  Every YAML file there gets applied to the cluster. Because those files are
-  themselves Applications, each one becomes an app in ArgoCD.
+- **`source.path: apps`** with **`directory.recurse: true`**: watches the
+  `apps/` folder of this repo on `main`, subfolders included. Every YAML file
+  there gets applied to the cluster. Because those files are themselves
+  Applications, each one becomes an app in ArgoCD.
+- **`directory.exclude: '*/values.yaml'`**: each component keeps its Helm
+  values next to its `application.yaml`. Those aren't Kubernetes manifests
+  (applying one fails with "Object 'Kind' is missing"), so root skips them;
+  the Applications read them through `$values` instead.
 - **It manages itself**: `root.yaml` lives in `apps/`, so root syncs its own
   manifest like any other. Something still has to start the chain:
   `kubectl apply -f apps/root.yaml` is run once on a fresh cluster, and from
@@ -36,15 +44,20 @@ sync other Application manifests.
   (with `kubectl edit` or in the ArgoCD UI), ArgoCD reverts it to match git.
   Root included: to change any sync policy, edit the file and push.
 - **`prune: true`**: deleting a file from `apps/` (or moving it out, e.g.
-  to an `archived/` folder) deletes the Application from the cluster. Apps
-  with the `resources-finalizer` then take their workloads with them. Argo CD refuses
+  to `archived/`) deletes the Application from the cluster. Apps with the
+  `resources-finalizer` then take their workloads with them. Argo CD refuses
   to prune everything at once, so an empty `apps/` won't wipe the cluster.
+- **Archiving**: `archived/` uses the same layout as `apps/`, so archiving
+  or restoring an app is moving its whole folder:
+  `git mv apps/<name> archived/` and back with `git mv archived/<name> apps/`.
+  If the folder has a `values.yaml`, update the `$values/...` path in its
+  `application.yaml` in the same commit.
 - **No `resources-finalizer`**: if root itself is deleted or pruned, the
   child Applications and workloads keep running; nothing syncs until
   `apps/root.yaml` is applied again. Same recovery if a bad change to
   `root.yaml` breaks root: fix the file and `kubectl apply` it.
 
-## `apps/argocd.yaml`: ArgoCD managing itself
+## `apps/argocd/application.yaml`: ArgoCD managing itself
 
 This Application installs the ArgoCD Helm chart, which is what runs ArgoCD.
 
@@ -53,9 +66,9 @@ This Application installs the ArgoCD Helm chart, which is what runs ArgoCD.
      chart version (`targetRevision`).
   2. **This repo, with `ref: values`**: doesn't deploy anything. It just gives
      the repo the name `$values` so the first source can read files from it.
-- **`valueFiles: [$values/values/argocd.yaml]`**: render the upstream chart
-  using the values file from this repo. Keeping the values separate means the
-  chart itself never has to be copied into the repo.
+- **`valueFiles: [$values/apps/argocd/values.yaml]`**: render the upstream
+  chart using the values file from this repo. Keeping the values separate
+  means the chart itself never has to be copied into the repo.
 - **`releaseName: argocd`**: must match the original Helm release name.
   Resource names are built from it (`argocd-server`, `argocd-repo-server`, …),
   and a different name would create a second set of resources instead of
@@ -74,7 +87,7 @@ This Application installs the ArgoCD Helm chart, which is what runs ArgoCD.
 **Upgrading ArgoCD:** bump the chart's `targetRevision`, commit and push.
 ArgoCD picks up the change and upgrades itself.
 
-## `apps/turbo-express.yaml`: the Express app
+## `apps/turbo-express/application.yaml`: the Express app
 
 Deploys the Express app from the `turbo-playground` monorepo. Unlike
 `argocd.yaml`, the chart and its values live in the app's own repo
@@ -94,7 +107,7 @@ Deploys the Express app from the `turbo-playground` monorepo. Unlike
 The Application was created by hand first and moved here on 2026-10-05; the
 file matches what was live exactly, so root adopted it without changing it.
 
-## `apps/fastapi-playground.yaml`: the FastAPI app
+## `apps/fastapi-playground/application.yaml`: the FastAPI app
 
 Same pattern as `turbo-express.yaml`: the chart (`helm/` on `main`) and the
 image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
@@ -106,7 +119,7 @@ image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
   `.Values.namespace` (`default`), so the chart decides where resources go.
   `destination.namespace` only applies to resources that don't set one.
 
-## `apps/go-playground.yaml`: the Go API
+## `archived/go-playground/application.yaml`: the Go API
 
 Same pattern as `fastapi-playground.yaml`: the chart (`helm/` on `main`) and
 the image tag (`values-image.yaml`) live in the `go-playground` repo, with
@@ -117,7 +130,7 @@ sets `namespace:` from `.Values.namespace` (`default`). Served at
 Unlike the other apps, it was added through this repo from the start
 (2026-10-06) rather than created by hand and adopted.
 
-## `apps/hono-playground.yaml`: the Hono API
+## `apps/hono-playground/application.yaml`: the Hono API
 
 Same pattern as `go-playground.yaml`: the chart (`helm/` on `main`) and the
 image tag (`values-image.yaml`) live in the `hono-playground` repo, with
@@ -139,7 +152,7 @@ starts.
     --from-literal=password='<password>'
   ```
 
-## `apps/drizzle-playground.yaml`: the Express + Drizzle API
+## `apps/drizzle-playground/application.yaml`: the Express + Drizzle API
 
 Same pattern as `hono-playground.yaml`: the chart (`helm/` on `main`) and the
 image tag (`values-image.yaml`) live in the `drizzle-playground` repo, with
@@ -162,13 +175,13 @@ It uses the same Postgres LXC as hono (`192.168.31.143`, database and user
     --from-literal=DOTENV_PRIVATE_KEY_PRODUCTION='<key>'
   ```
 
-## `apps/kube-prometheus-stack.yaml`: monitoring
+## `apps/kube-prometheus-stack/application.yaml`: monitoring
 
 Prometheus, Alertmanager, node-exporter, kube-state-metrics and the
 Prometheus Operator, in the `monitoring` namespace. Grafana is not part of
 it (see below). Same two-source pattern
 as `argocd.yaml`: the upstream chart, with values from
-`values/kube-prometheus-stack.yaml` in this repo. To upgrade, bump the chart's
+`apps/kube-prometheus-stack/values.yaml` in this repo. To upgrade, bump the chart's
 `targetRevision`.
 
 - **`CreateNamespace=true`**: ArgoCD creates `monitoring` on the first sync.
@@ -186,7 +199,7 @@ as `argocd.yaml`: the upstream chart, with values from
 It was added on 2026-10-12, reinstalled from scratch after the old
 hand-installed release was removed on 2026-10-05.
 
-## `values/kube-prometheus-stack.yaml`: monitoring configuration
+## `apps/kube-prometheus-stack/values.yaml`: monitoring configuration
 
 - **Control plane monitors off**: k3s runs the controller-manager,
   scheduler, kube-proxy and etcd inside the single `k3s` process rather than
@@ -211,7 +224,7 @@ hand-installed release was removed on 2026-10-05.
   ConfigMaps labelled `grafana_dashboard: "1"`, so a Grafana in the cluster
   with the dashboard sidecar picks them up automatically.
 
-## `values/argocd.yaml`: ArgoCD's configuration
+## `apps/argocd/values.yaml`: ArgoCD's configuration
 
 The Helm values originally passed to `helm install`, copied unchanged (the
 chart renders identically with this file and with the original live values).
@@ -243,15 +256,15 @@ helm show values argo/argo-cd --version <chart version>
 A short description of the layout and the steps to rebuild the cluster from
 scratch:
 
-1. `helm install` ArgoCD with `values/argocd.yaml`. ArgoCD has to exist before
-   it can manage anything. The chart version is read from `apps/argocd.yaml`
-   with `awk`, so the install matches git and ArgoCD doesn't upgrade or
-   downgrade itself right after bootstrap.
+1. `helm install` ArgoCD with `apps/argocd/values.yaml`. ArgoCD has to exist
+   before it can manage anything. The chart version is read from
+   `apps/argocd/application.yaml` with `awk`, so the install matches git and
+   ArgoCD doesn't upgrade or downgrade itself right after bootstrap.
 2. `kubectl apply -f apps/root.yaml`.
 3. From there, root syncs `apps/`: it adopts its own manifest, and
-   `apps/argocd.yaml` adopts the Helm install ArgoCD was started from. That's
-   the same takeover that was done on the live cluster when this repo was set
-   up (2026-10-05). The Helm release record stays behind and should be left
+   `apps/argocd/application.yaml` adopts the Helm install ArgoCD was started
+   from. That's the same takeover that was done on the live cluster when this
+   repo was set up (2026-10-05). The Helm release record stays behind and should be left
    alone.
 
 It also has the command for joining extra nodes. That happens at the k3s
@@ -264,5 +277,5 @@ instructions for a person, not config.
 
 - **App `ServiceMonitor`s**: the apps' charts stopped shipping them when
   monitoring was removed on 2026-10-05. Now that the CRDs are back (see
-  `apps/kube-prometheus-stack.yaml`), they can be added again.
+  `apps/kube-prometheus-stack/`), they can be added again.
 - **Traefik**: installed and managed by k3s itself.

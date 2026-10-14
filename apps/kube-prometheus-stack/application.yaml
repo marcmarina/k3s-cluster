@@ -16,7 +16,7 @@ spec:
       helm:
         releaseName: kube-prometheus-stack
         valueFiles:
-          - $values/values/kube-prometheus-stack.yaml
+          - $values/apps/kube-prometheus-stack/values.yaml
     - repoURL: https://github.com/marcmarina/k3s-cluster.git
       targetRevision: main
       ref: values

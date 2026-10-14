@@ -3,29 +3,31 @@
 GitOps config for the `k3s-server` cluster, managed by ArgoCD.
 
 ```
-apps/                 One ArgoCD Application per component (root included)
-values/               Helm values referenced by the Applications
+apps/root.yaml        The app of apps, syncs everything under apps/
+apps/<name>/          One folder per component: application.yaml (the ArgoCD
+                      Application) and, for upstream charts, values.yaml
 ```
 
 ## Bootstrap a fresh cluster
 
-Needs `helm` and `kubectl`. The chart version is read from `apps/argocd.yaml`
-(the first `targetRevision:` in the file, so keep the chart source first) so
-it can't drift from git.
+Needs `helm` and `kubectl`. The chart version is read from
+`apps/argocd/application.yaml` (the first `targetRevision:` in the file, so
+keep the chart source first) so it can't drift from git.
 
 ```sh
 helm repo add argo https://argoproj.github.io/argo-helm
 helm install argocd argo/argo-cd -n argocd --create-namespace \
-  --version "$(awk '/targetRevision:/ {print $2; exit}' apps/argocd.yaml)" \
-  -f values/argocd.yaml
+  --version "$(awk '/targetRevision:/ {print $2; exit}' apps/argocd/application.yaml)" \
+  -f apps/argocd/values.yaml
 # Create the GitHub credentials here (see "Private repositories" below),
 # or apps from private repos won't sync
 kubectl apply -f apps/root.yaml
 ```
 
-From then on ArgoCD manages itself and root: change `values/argocd.yaml` or
-bump the chart version in `apps/argocd.yaml`, push, and it syncs. Leave the
-original Helm release alone (no `helm upgrade`/`helm uninstall`).
+From then on ArgoCD manages itself and root: change `apps/argocd/values.yaml`
+or bump the chart version in `apps/argocd/application.yaml`, push, and it
+syncs. Leave the original Helm release alone (no `helm upgrade`/`helm
+uninstall`).
 
 ## Private repositories
 
@@ -52,8 +54,8 @@ The token expires (a year at most). To rotate it, delete the Secret and
 create it again with the new token, then hard refresh any app showing an
 auth error.
 
-Don't put the token in `values/argocd.yaml` (`configs.credentialTemplates`):
-that file is committed in plain text.
+Don't put the token in `apps/argocd/values.yaml`
+(`configs.credentialTemplates`): that file is committed in plain text.
 
 Alternatives, if this gets annoying:
 
