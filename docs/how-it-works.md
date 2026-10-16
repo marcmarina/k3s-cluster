@@ -13,7 +13,8 @@ k3s-cluster/
 │   ├── drizzle-playground/application.yaml
 │   ├── fastapi-playground/application.yaml
 │   ├── hono-playground/application.yaml
-│   └── turbo-express/application.yaml
+│   ├── turbo-express/application.yaml
+│   └── turbo-koa/application.yaml
 ├── archived/                      ← same layout, not synced (outside apps/)
 │   ├── forgetful-api/application.yaml
 │   └── go-playground/application.yaml
@@ -108,6 +109,20 @@ Deploys the Express app from the `turbo-playground` monorepo. Unlike
 
 The Application was created by hand first and moved here on 2026-10-05; the
 file matches what was live exactly, so root adopted it without changing it.
+
+## `apps/turbo-koa/application.yaml`: the Koa app
+
+Same pattern as `turbo-express.yaml`, from the same `turbo-playground` repo
+and the same image: the chart (`apps/koa/helm` on `master`) and the image tag
+(`values-image.yaml`) live there, with `prune: true` and the
+`resources-finalizer`. The app repo's CI bumps both apps' image tags in one
+commit, so they always deploy the same build. Served at
+`turbo-koa.marc-lab.dev` through Traefik's `web` entrypoint.
+
+- **No `releaseName`**: it defaults to the Application name, `turbo-koa`.
+- **No `ServiceMonitor`**: the Koa app has no `/metrics` endpoint.
+
+Added through this repo from the start (2026-10-16).
 
 ## `apps/fastapi-playground/application.yaml`: the FastAPI app
 

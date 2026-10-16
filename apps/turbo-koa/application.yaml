@@ -1,0 +1,26 @@
+# Koa app from the turbo-playground monorepo. The chart and its image tag
+# (values-image.yaml) live in that repo; this only tells ArgoCD to deploy it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: turbo-koa
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/marcmarina/turbo-playground.git
+    targetRevision: master
+    path: apps/koa/helm
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-image.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
