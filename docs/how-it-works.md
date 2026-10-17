@@ -13,6 +13,7 @@ k3s-cluster/
 │   ├── drizzle-playground/application.yaml
 │   ├── fastapi-playground/application.yaml
 │   ├── hono-playground/application.yaml
+│   ├── mintlify/application.yaml
 │   ├── turbo-express/application.yaml
 │   └── turbo-koa/application.yaml
 ├── archived/                      ← same layout, not synced (outside apps/)
@@ -168,6 +169,18 @@ starts.
   kubectl -n default create secret generic hono-playground-db \
     --from-literal=password='<password>'
   ```
+
+## `apps/mintlify/application.yaml`: the Hono API docs
+
+Same pattern as `hono-playground.yaml`: the chart (`helm/` on `main`) and the
+image tag (`values-image.yaml`) live in the `mintlify` repo, with
+`prune: true` and the `resources-finalizer`. Served at `docs.marc-lab.dev`
+through Traefik's `web` entrypoint.
+
+The image is a static `mint export` of the site served by nginx, so it needs
+no Secrets. The API reference is generated from
+`hono.marc-lab.dev/openapi.json` at image build time: a new spec shows up
+after the next build in the `mintlify` repo, not on its own.
 
 ## `apps/drizzle-playground/application.yaml`: the Express + Drizzle API
 

@@ -9,7 +9,7 @@ GitOps config for a single-server k3s cluster, managed by ArgoCD. There is no bu
 - `apps/root.yaml` is the app of apps. It syncs `apps/` recursively but only files matching `{root.yaml,*/application.yaml}`, and it manages (and self-heals) itself. Anything else in an app folder is ignored by root, so a plain manifest needs its own Application.
 - `apps/<name>/application.yaml` is one ArgoCD Application per component. Two patterns:
   - **Upstream charts** (`argocd`, `kube-prometheus-stack`): multi-source — the chart pinned by `targetRevision`, plus this repo as `ref: values`, read via `valueFiles: [$values/apps/<name>/values.yaml]`. Upgrade by bumping the chart's `targetRevision`.
-  - **Own apps** (`*-playground`, `turbo-express`, `turbo-koa`): the Helm chart and the image tag (`values-image.yaml`) live in the app's own GitHub repo. Deploying a new version happens there, not here.
+  - **Own apps** (`*-playground`, `turbo-express`, `turbo-koa`, `mintlify`): the Helm chart and the image tag (`values-image.yaml`) live in the app's own GitHub repo. Deploying a new version happens there, not here.
 - `archived/` has the same layout but is outside `apps/`, so it isn't synced. Archive/restore with `git mv apps/<name> archived/` (and back); if the folder has a `values.yaml`, fix the `$values/...` path in its `application.yaml` in the same commit.
 
 ## Invariants to preserve
