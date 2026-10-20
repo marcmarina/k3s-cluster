@@ -250,9 +250,7 @@ hand-installed release was removed on 2026-10-05.
 - **No Grafana**: the chart's bundled Grafana is disabled so Grafana can be
   run and upgraded separately. Point it at Prometheus at
   `http://kube-prometheus-stack-prometheus.monitoring.svc:9090` (from inside
-  the cluster). `forceDeployDashboards: true` keeps the chart's dashboards as
-  ConfigMaps labelled `grafana_dashboard: "1"`, so a Grafana in the cluster
-  with the dashboard sidecar picks them up automatically.
+  the cluster). Its dashboards are managed in Grafana itself, not here.
 
 ## `apps/argocd/values.yaml`: ArgoCD's configuration
 

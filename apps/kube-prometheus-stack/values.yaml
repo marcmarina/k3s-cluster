@@ -65,8 +65,5 @@ alertmanager:
               storage: 1Gi
 
 # Grafana runs separately; this chart only installs Prometheus and friends.
-# forceDeployDashboards still ships the chart's dashboards as ConfigMaps
-# (labelled grafana_dashboard=1) for a Grafana sidecar to pick up.
 grafana:
   enabled: false
-  forceDeployDashboards: true
