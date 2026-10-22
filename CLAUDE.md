@@ -20,7 +20,7 @@ GitOps config for a single-server k3s cluster, managed by ArgoCD. There is no bu
 - In `apps/argocd/application.yaml` the chart source must stay first: the README bootstrap reads the first `targetRevision:` with `awk`. `releaseName: argocd` must match the original Helm release; never `helm upgrade`/`uninstall` that release.
 - `ServerSideApply=true` is required where charts ship large CRDs (ArgoCD, kube-prometheus-stack).
 - Secrets are never committed. Private repos use a hand-created `repo-creds` Secret (`github-marcmarina-creds`), and some apps need hand-created Secrets (`hono-playground-db`, `drizzle-playground-dotenvx-keys`) — see the README and `docs/how-it-works.md`.
-- Hosts are `*.marc-lab.dev` via Traefik's `web` entrypoint (Traefik is managed by k3s, not this repo). `prometheus.marc-lab.dev` has no auth and must stay LAN-only.
+- Hosts are `*.marc-lab.dev` via Traefik's `web` entrypoint (Traefik is managed by k3s, not this repo). Prometheus (`prometheus.home.com`, not under `*.marc-lab.dev`) has no auth and must stay LAN-only.
 
 When adding, moving or changing an app, update `docs/how-it-works.md` (and the tree at its top) to match.
 

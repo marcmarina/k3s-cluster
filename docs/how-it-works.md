@@ -243,7 +243,7 @@ hand-installed release was removed on 2026-10-05.
 - **Storage**: Prometheus keeps 15 days of data (capped at 8GB) on a 10Gi
   `local-path` volume, Alertmanager on 1Gi. `local-path` stores it on the
   node's disk, so the data is tied to that node.
-- **Prometheus ingress**: served at `prometheus.marc-lab.dev` through
+- **Prometheus ingress**: served at `prometheus.home.com` through
   Traefik's `web` entrypoint. Prometheus has no login, so this host is meant
   to be reached only through the local Caddy server, which keeps it on the
   LAN. Don't add it to public DNS or forward it from outside.
