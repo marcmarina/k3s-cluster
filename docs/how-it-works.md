@@ -112,7 +112,7 @@ Deploys the Express app from the `turbo-playground` monorepo. Unlike
 The Application was created by hand first and moved here on 2026-10-05; the
 file matches what was live exactly, so root adopted it without changing it.
 
-## `apps/turbo-koa/application.yaml`: the Koa app
+## `archived/turbo-koa/application.yaml`: the Koa app
 
 Same pattern as `turbo-express.yaml`, from the same `turbo-playground` repo
 and the same image: the chart (`apps/koa/helm` on `master`) and the image tag
@@ -126,7 +126,7 @@ commit, so they always deploy the same build. Served at
 
 Added through this repo from the start (2026-10-16).
 
-## `apps/fastapi-playground/application.yaml`: the FastAPI app
+## `archived/fastapi-playground/application.yaml`: the FastAPI app
 
 Same pattern as `turbo-express.yaml`: the chart (`helm/` on `main`) and the
 image tag (`values-image.yaml`) live in the `fastapi-playground` repo, with
@@ -171,7 +171,7 @@ starts.
     --from-literal=password='<password>'
   ```
 
-## `apps/mintlify/application.yaml`: the Hono API docs
+## `archived/mintlify/application.yaml`: the Hono API docs
 
 Same pattern as `hono-playground.yaml`: the chart (`helm/` on `main`) and the
 image tag (`values-image.yaml`) live in the `mintlify` repo, with
