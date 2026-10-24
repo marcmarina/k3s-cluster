@@ -11,14 +11,15 @@ k3s-cluster/
 │   │   ├── application.yaml
 │   │   └── values.yaml
 │   ├── drizzle-playground/application.yaml
-│   ├── fastapi-playground/application.yaml
 │   ├── hono-playground/application.yaml
-│   ├── mintlify/application.yaml
-│   ├── turbo-express/application.yaml
-│   └── turbo-koa/application.yaml
+│   ├── horari-bus/application.yaml
+│   └── turbo-express/application.yaml
 ├── archived/                      ← same layout, not synced (outside apps/)
+│   ├── fastapi-playground/application.yaml
 │   ├── forgetful-api/application.yaml
-│   └── go-playground/application.yaml
+│   ├── go-playground/application.yaml
+│   ├── mintlify/application.yaml
+│   └── turbo-koa/application.yaml
 └── README.md
 ```
 
@@ -204,6 +205,19 @@ It uses the same Postgres LXC as hono (`192.168.31.143`, database and user
   kubectl -n default create secret generic drizzle-playground-dotenvx-keys \
     --from-literal=DOTENV_PRIVATE_KEY_PRODUCTION='<key>'
   ```
+
+## `apps/horari-bus/application.yaml`: the bus timetable app
+
+Same pattern as `drizzle-playground.yaml`: the chart (`helm/` on `main`) and
+the image tag (`values-image.yaml`) live in the `horari-bus` repo, with
+`prune: true` and the `resources-finalizer`. Served at
+`horari-bus.marc-lab.dev` through Traefik's `web` entrypoint.
+
+It's a static Vue SPA: the image is the built `dist/` served by
+`nginx-unprivileged` on port 8080, with `/_health` for the probes. No
+database, no Secrets and no HPA (one replica).
+
+Added on 2026-10-24.
 
 ## `apps/kube-prometheus-stack/application.yaml`: monitoring
 
