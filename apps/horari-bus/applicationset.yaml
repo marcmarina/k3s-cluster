@@ -1,0 +1,55 @@
+# PR previews for horari-bus: one Application per open pull request, served at
+# horari-bus-pr-<number>.marc-lab.dev. The horari-bus repo's Preview workflow
+# builds the image tagged pr-<number>-<head sha>; this deploys that commit's
+# chart with that tag. Closing the PR deletes the Application, and the
+# finalizer takes its workload with it.
+#
+# The generator polls GitHub with the github-marcmarina-creds token, which needs
+# read access to pull requests on horari-bus (on top of Contents).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: horari-bus-previews
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ['missingkey=error']
+  generators:
+    - pullRequest:
+        github:
+          owner: marcmarina
+          repo: horari-bus
+          tokenRef:
+            secretName: github-marcmarina-creds
+            key: password
+        requeueAfterSeconds: 60
+  template:
+    metadata:
+      name: 'horari-bus-pr-{{ .number }}'
+      namespace: argocd
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/marcmarina/horari-bus
+        targetRevision: '{{ .head_sha }}'
+        path: helm
+        helm:
+          # The chart names its resources after the release, so previews
+          # don't clash with the main app in the same namespace.
+          releaseName: 'horari-bus-pr-{{ .number }}'
+          valueFiles:
+            - values.yaml
+          parameters:
+            - name: image.tag
+              value: 'pr-{{ .number }}-{{ .head_sha }}'
+            - name: ingress.host
+              value: 'horari-bus-pr-{{ .number }}.marc-lab.dev'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: default
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

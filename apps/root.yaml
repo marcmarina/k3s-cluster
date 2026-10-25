@@ -1,5 +1,6 @@
 # App of apps: every Application manifest under apps/ (one folder per
-# component, each with an application.yaml) is synced from git,
+# component, each with an application.yaml, plus any applicationset.yaml)
+# is synced from git,
 # including this one, so root manages (and self-heals) itself.
 # Applied by hand only once, when bootstrapping a cluster:
 #   kubectl apply -f apps/root.yaml
@@ -19,10 +20,10 @@ spec:
     path: apps
     directory:
       recurse: true
-      # Only Applications: root.yaml itself (or root would prune itself) and
-      # each component's application.yaml. Anything else in a component
-      # folder, like its Helm values, is ignored
-      include: '{root.yaml,*/application.yaml}'
+      # Only Applications: root.yaml itself (or root would prune itself),
+      # each component's application.yaml and any applicationset.yaml.
+      # Anything else in a component folder, like its Helm values, is ignored
+      include: '{root.yaml,*/application.yaml,*/applicationset.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

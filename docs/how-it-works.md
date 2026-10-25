@@ -12,7 +12,9 @@ k3s-cluster/
 │   │   └── values.yaml
 │   ├── drizzle-playground/application.yaml
 │   ├── hono-playground/application.yaml
-│   ├── horari-bus/application.yaml
+│   ├── horari-bus/
+│   │   ├── application.yaml
+│   │   └── applicationset.yaml ← PR previews
 │   └── turbo-express/application.yaml
 ├── archived/                      ← same layout, not synced (outside apps/)
 │   ├── fastapi-playground/application.yaml
@@ -32,8 +34,8 @@ sync other Application manifests.
   `apps/` folder of this repo on `main`, subfolders included. Every YAML file
   there gets applied to the cluster. Because those files are themselves
   Applications, each one becomes an app in ArgoCD.
-- **`directory.include: '{root.yaml,*/application.yaml}'`**: root only
-  applies Applications. Anything else in a component folder is ignored,
+- **`directory.include: '{root.yaml,*/application.yaml,*/applicationset.yaml}'`**:
+  root only applies Applications (and ApplicationSets, which generate them). Anything else in a component folder is ignored,
   such as its Helm values (not Kubernetes manifests; the Application reads
   them through `$values`). `root.yaml` has to be in the pattern too, or root
   would stop managing (and prune) itself. A plain manifest next to an
@@ -218,6 +220,32 @@ It's a static Vue SPA: the image is the built `dist/` served by
 database, no Secrets and no HPA (one replica).
 
 Added on 2026-10-24.
+
+### `apps/horari-bus/applicationset.yaml`: PR previews
+
+An ApplicationSet with the **pull request generator**: it polls GitHub every
+minute (`requeueAfterSeconds: 60`) for open PRs on `marcmarina/horari-bus`
+and creates one Application per PR, `horari-bus-pr-<number>`, served at
+`horari-bus-pr-<number>.marc-lab.dev`. Closing or merging the PR deletes the
+Application, and its `resources-finalizer` deletes the workload.
+
+- **Source**: the chart at the PR's head commit (`targetRevision:
+  '{{ .head_sha }}'`), with only `values.yaml` (not `values-image.yaml`) and
+  `image.tag` set to `pr-<number>-<head sha>`. The horari-bus repo's Preview
+  workflow builds and pushes that tag on every push to the PR. ArgoCD can
+  notice a push before the image exists; the pod then sits in
+  `ImagePullBackOff` for a minute or two, and the old pod keeps serving.
+- **`releaseName: horari-bus-pr-<number>`**: the chart names its Deployment,
+  Service and Ingress after the release, so previews live next to the main
+  app in `default` without clashing.
+- **`tokenRef`**: the generator reads PRs through the GitHub API with the
+  `password` key of `github-marcmarina-creds`, the same token ArgoCD clones
+  with. The repo is private, so that token needs **Pull requests: Read** on
+  `horari-bus` as well as Contents.
+- **Hostname**: one level under `marc-lab.dev` (`horari-bus-pr-6`, not
+  `pr-6.horari-bus`), so the wildcard DNS record and certificate cover it.
+
+Added on 2026-10-25.
 
 ## `apps/kube-prometheus-stack/application.yaml`: monitoring
 
